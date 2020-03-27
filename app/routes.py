@@ -4,7 +4,7 @@ from flask import request
 from app.orm import get_posts, create_post, get_post
 
 
-@app.route('/post', methods=['GET', 'POST'])
+@app.route('/api/post', methods=['GET', 'POST'])
 def posts():
     if request.method == 'GET':
         return get_posts()
@@ -15,7 +15,7 @@ def posts():
         return create_post(title, owner_id, content)
 
 
-@app.route('/post/<id>', methods=['GET'])
+@app.route('/api/post/<id>', methods=['GET'])
 def post(id):
     print('id', id)
     if request.method == 'GET':
