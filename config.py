@@ -24,6 +24,7 @@ class StagingConfig(Config):
 class DevelopmentConfig(Config):
     DEVELOPMENT = True
     DEBUG = True
+    FLASK_DEBUG = os.environ.get('FLASK_DEBUG')
 
 
 class TestingConfig(Config):
