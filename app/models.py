@@ -33,6 +33,7 @@ class User(UserMixin, db.Model):
             'id': self.id,
             'username': self.username,
             'email': self.email,
+            'permissions': [permission.serialize for permission in self.permissions]
         }
 
 
@@ -46,6 +47,7 @@ class Post(db.Model):
 
     id = db.Column(db.BigInteger, primary_key=True)
     owner_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
+    description = db.Column(db.String(1024))
     content = db.Column(db.String(20000))
     time_created = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
     title = db.Column(db.String(256), nullable=True)
@@ -57,4 +59,30 @@ class Post(db.Model):
             'title': self.title,
             'owner': self.owner.serialize,
             'content': self.content,
+        }
+
+
+user_permission = db.Table(
+    'user_permission',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('permission_id', db.Integer, db.ForeignKey('permission.id'), primary_key=True)
+)
+
+
+class Permission(db.Model):
+    __tablename__ = 'permission'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    users = db.relationship('User', secondary=user_permission, lazy='subquery',
+                            backref=db.backref('permissions', lazy=True))
+
+    def __repr__(self):
+        return '<Permission {}>'.format(self.title)
+
+    @property
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
         }
