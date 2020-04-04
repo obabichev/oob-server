@@ -52,6 +52,8 @@ class Post(db.Model):
     time_created = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
     title = db.Column(db.String(256), nullable=True)
 
+    files = db.relationship('File', backref='post', lazy=True)
+
     @property
     def serialize(self):
         return {
@@ -64,16 +66,17 @@ class Post(db.Model):
 
 user_permission = db.Table(
     'user_permission',
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-    db.Column('permission_id', db.Integer, db.ForeignKey('permission.id'), primary_key=True)
+    db.Column('user_id', db.BigInteger, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('permission_id', db.BigInteger, db.ForeignKey('permission.id'), primary_key=True)
 )
 
 
 class Permission(db.Model):
     __tablename__ = 'permission'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.BigInteger, primary_key=True)
     name = db.Column(db.String(128), nullable=False)
+
     users = db.relationship('User', secondary=user_permission, lazy='subquery',
                             backref=db.backref('permissions', lazy=True))
 
@@ -85,4 +88,28 @@ class Permission(db.Model):
         return {
             'id': self.id,
             'name': self.name,
+        }
+
+
+class File(db.Model):
+    __tablename__ = 'file'
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    url = db.Column(db.String(512), nullable=False)
+    key = db.Column(db.String(512), nullable=False)
+    filename = db.Column(db.String(256), nullable=False)
+    mimetype = db.Column(db.String(128), nullable=False)
+    post_id = db.Column(db.BigInteger, db.ForeignKey('post.id'), nullable=False)
+
+    def __repr__(self):
+        return '<File {} ({})>'.format(self.filename, self.mimetype)
+
+    @property
+    def serialize(self):
+        return {
+            'id': self.id,
+            'url': self.url,
+            'key': self.key,
+            'filename': self.filename,
+            'mimetype': self.mimetype,
         }

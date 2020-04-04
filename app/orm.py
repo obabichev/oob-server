@@ -1,4 +1,6 @@
 from flask import jsonify
+from flask_login import current_user
+
 from app import db
 from app.models import Post
 
@@ -10,11 +12,11 @@ def get_posts():
     return jsonify(posts=_posts)
 
 
-def create_post(title, owner_id, content):
-    post = Post(title=title, owner_id=owner_id, content=content)
+def create_post(title, description, content):
+    post = Post(title=title, owner_id=current_user.id, content=content, description=description)
     db.session.add(post)
     db.session.commit()
-    return jsonify(Post=post.serialize)
+    return jsonify(post=post.serialize)
 
 
 def get_post(post_id):
