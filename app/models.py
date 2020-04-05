@@ -4,6 +4,7 @@ from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app import login
+from sqlalchemy.dialects.postgresql import ENUM
 
 
 class User(UserMixin, db.Model):
@@ -17,6 +18,7 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(128))
 
     posts = db.relationship('Post', backref='owner', lazy=True)
+    files = db.relationship('File', backref='owner', lazy=True)
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -51,8 +53,9 @@ class Post(db.Model):
     content = db.Column(db.String(20000))
     time_created = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
     title = db.Column(db.String(256), nullable=True)
+    status = db.Column("status", ENUM("draft", "progress", "published", "deleted", name="post_status"))
 
-    files = db.relationship('File', backref='post', lazy=True)
+    files = db.relationship('File', backref='posts', lazy=True)
 
     @property
     def serialize(self):
@@ -61,6 +64,7 @@ class Post(db.Model):
             'title': self.title,
             'owner': self.owner.serialize,
             'content': self.content,
+            'status': self.status
         }
 
 
@@ -95,11 +99,13 @@ class File(db.Model):
     __tablename__ = 'file'
 
     id = db.Column(db.BigInteger, primary_key=True)
+    post_id = db.Column(db.BigInteger, db.ForeignKey('post.id'), nullable=False)
+
     url = db.Column(db.String(512), nullable=False)
     key = db.Column(db.String(512), nullable=False)
     filename = db.Column(db.String(256), nullable=False)
     mimetype = db.Column(db.String(128), nullable=False)
-    post_id = db.Column(db.BigInteger, db.ForeignKey('post.id'), nullable=False)
+    user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
         return '<File {} ({})>'.format(self.filename, self.mimetype)

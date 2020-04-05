@@ -2,11 +2,13 @@ import os
 
 import boto3
 from flask_login import login_user, current_user, logout_user
+from werkzeug.utils import secure_filename
 
 from app import app, User, db, BUCKET
 from flask import request, jsonify, send_file
 
-from app.orm import get_posts, create_post, get_post
+from app.models import File, Post
+from app.orm import get_posts, create_post, get_post, get_draft_post
 from app.utils.s3 import list_files, download_file, upload_file
 
 
@@ -57,6 +59,9 @@ def logout():
 @app.route('/api/post', methods=['GET', 'POST'])
 def posts():
     if request.method == 'GET':
+        status = request.args.get('status')
+        if status == 'draft':
+            return get_draft_post()
         return get_posts()
     elif request.method == 'POST':
         body = request.get_json()
@@ -92,15 +97,37 @@ def download(filename):
         # return send_file(output, as_attachment=True)
 
 
-@app.route("/api/upload", methods=['POST'])
-def upload():
-    print(request.files)
+@app.route("/api/post/<post_id>/upload", methods=['POST'])
+def upload(post_id):
+    # print(request.files)
     f = request.files['file']
-    print(type(f))
-    print(f)
-    name = f.filename
+    # print(type(f))
+    # print(f)
 
+    post = Post.query.get(int(post_id))
+    if post is None:
+        return jsonify(error={'message': 'Post was not found'}), 400
+
+    if not post.owner_id == current_user.id:
+        return jsonify(error={'message': 'That is not your post'}), 400
+
+    name = secure_filename(f.filename)
+    print('postId', post_id)
+
+    key = '{}/{}/{}'.format(current_user.id, post_id, name)
+
+    mimetype = f.mimetype
+    if not mimetype.startswith('image/'):
+        return jsonify(error={'message': 'File should be an image'}), 400
+    #
     s3_client = boto3.client('s3')
-    s3_client.upload_fileobj(f, BUCKET, name)
+    s3_client.upload_fileobj(f, BUCKET, key, ExtraArgs={'ACL': 'public-read'})
 
-    return jsonify(None)
+    url = 'https://{}.s3.eu-central-1.amazonaws.com/{}'.format(BUCKET, key)
+
+    file = File(url=url, key=key, filename=name, mimetype=mimetype, user_id=current_user.id, post_id=post.id)
+    db.session.add(file)
+    db.session.commit()
+
+    return jsonify(file=file.serialize)
+

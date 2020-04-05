@@ -12,6 +12,15 @@ def get_posts():
     return jsonify(posts=_posts)
 
 
+def get_draft_post():
+    post = Post.query.filter_by(owner_id=current_user.id, status='draft').first()
+    if post is None:
+        post = Post(owner_id=current_user.id, description='', content='', title='', status='draft')
+        db.session.add(post)
+        db.session.commit()
+    return jsonify(post=post.serialize)
+
+
 def create_post(title, description, content):
     post = Post(title=title, owner_id=current_user.id, content=content, description=description)
     db.session.add(post)
