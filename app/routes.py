@@ -4,7 +4,7 @@ import boto3
 from flask_login import login_user, current_user, logout_user
 from werkzeug.utils import secure_filename
 
-from app import app, User, db, BUCKET
+from app import app, User, db
 from flask import request, jsonify, send_file
 
 from app.models import File, Post
@@ -73,14 +73,14 @@ def post(id):
 
 @app.route('/api/files')
 def files():
-    files = list_files(BUCKET)
+    files = list_files(app.config['S3_BUCKET_NAME'])
     return jsonify(files=files)
 
 
 @app.route("/api/file/<filename>", methods=['GET'])
 def download(filename):
     if request.method == 'GET':
-        return download_file(filename, BUCKET)
+        return download_file(filename, app.config['S3_BUCKET_NAME'])
         # output = download_file(filename, BUCKET)
         # return send_file(output, as_attachment=True)
 
@@ -109,9 +109,10 @@ def upload(post_id):
         return jsonify(error={'message': 'File should be an image'}), 400
     #
     s3_client = boto3.client('s3')
-    s3_client.upload_fileobj(f, BUCKET, key, ExtraArgs={'ACL': 'public-read'})
+    print('app.config[S3_BUCKET_NAME]', app.config['S3_BUCKET_NAME'])
+    s3_client.upload_fileobj(f, app.config['S3_BUCKET_NAME'], key, ExtraArgs={'ACL': 'public-read'})
 
-    url = 'https://{}.s3.eu-central-1.amazonaws.com/{}'.format(BUCKET, key)
+    url = 'https://{}.s3.eu-central-1.amazonaws.com/{}'.format(app.config['S3_BUCKET_NAME'], key)
 
     file = File(url=url, key=key, filename=name, mimetype=mimetype, user_id=current_user.id, post_id=post.id)
     db.session.add(file)
