@@ -35,7 +35,9 @@ class User(UserMixin, db.Model):
             'id': self.id,
             'username': self.username,
             'email': self.email,
-            'permissions': [permission.serialize for permission in self.permissions]
+            'permissions': [permission.serialize for permission in self.permissions],
+            'firstName': self.first_name,
+            'lastName': self.last_name,
         }
 
 
@@ -53,7 +55,7 @@ class Post(db.Model):
     content = db.Column(db.String(20000))
     time_created = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
     title = db.Column(db.String(256), nullable=True)
-    status = db.Column("status", ENUM("draft", "progress", "published", "deleted", name="post_status"))
+    status = db.Column("status", ENUM("init", "draft", "published", "deleted", name="post_status"))
 
     files = db.relationship('File', backref='posts', lazy=True)
 
@@ -62,9 +64,11 @@ class Post(db.Model):
         return {
             'id': self.id,
             'title': self.title,
+            'description': self.description,
             'owner': self.owner.serialize,
             'content': self.content,
-            'status': self.status
+            'status': self.status,
+            'createdAt': self.time_created
         }
 
 
@@ -100,12 +104,13 @@ class File(db.Model):
 
     id = db.Column(db.BigInteger, primary_key=True)
     post_id = db.Column(db.BigInteger, db.ForeignKey('post.id'), nullable=False)
+    user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
 
     url = db.Column(db.String(512), nullable=False)
     key = db.Column(db.String(512), nullable=False)
     filename = db.Column(db.String(256), nullable=False)
     mimetype = db.Column(db.String(128), nullable=False)
-    user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
 
     def __repr__(self):
         return '<File {} ({})>'.format(self.filename, self.mimetype)

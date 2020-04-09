@@ -8,7 +8,7 @@ from app import app, User, db, BUCKET
 from flask import request, jsonify, send_file
 
 from app.models import File, Post
-from app.orm import get_posts, create_post, get_post, get_draft_post
+from app.orm import get_posts, create_post, get_post, get_init_post
 from app.utils.s3 import list_files, download_file, upload_file
 
 
@@ -56,24 +56,12 @@ def logout():
     return jsonify(None)
 
 
-@app.route('/api/post', methods=['GET', 'POST'])
+@app.route('/api/post', methods=['GET'])
 def posts():
-    if request.method == 'GET':
-        status = request.args.get('status')
-        if status == 'draft':
-            return get_draft_post()
-        return get_posts()
-    elif request.method == 'POST':
-        body = request.get_json()
-
-        title = body['title']
-        description = body['description']
-        content = body['content']
-
-        # title = request.args.get('title', '')
-        # owner_id = request.args.get('owner_id', '')
-        # content = request.args.get('content', '')
-        return create_post(title, description, content)
+    status = request.args.get('status')
+    if status == 'init':
+        return get_init_post()
+    return get_posts()
 
 
 @app.route('/api/post/<id>', methods=['GET'])
@@ -131,3 +119,31 @@ def upload(post_id):
 
     return jsonify(file=file.serialize)
 
+
+@app.route("/api/post/<post_id>/files")
+def post_files(post_id):
+    post = Post.query.get(int(post_id))
+    if post is None or not post.owner_id == current_user.id:
+        return jsonify(error={'message': 'Post id is not correct'}), 400
+
+    files = File.query.filter_by(post_id=post.id).order_by(File.created_at.desc()).all()
+
+    serialized_files = [file.serialize for file in files]
+
+    return jsonify(files=serialized_files)
+
+
+@app.route('/api/post/<post_id>', methods=['PUT'])
+def update_post(post_id):
+    post = Post.query.get(int(post_id))
+    if post is None or not post.owner_id == current_user.id:
+        return jsonify(error={'message': 'Post id is not correct'}), 400
+
+    body = request.get_json()
+    post.title = body['title']
+    post.description = body['description']
+    post.content = body['content']
+    post.status = body['status']
+    db.session.commit()
+
+    return post.serialize
