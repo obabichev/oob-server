@@ -147,4 +147,4 @@ def update_post(post_id):
     post.status = body['status']
     db.session.commit()
 
-    return post.serialize
+    return jsonify(post=post.serialize)
